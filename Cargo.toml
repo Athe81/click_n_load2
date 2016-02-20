@@ -1,0 +1,6 @@
+[package]
+name = "click_n_load"
+version = "0.1.0"
+authors = ["Bubblepoint <t.matt81+github@gmail.com>"]
+
+[dependencies]
