@@ -5,3 +5,6 @@ authors = ["Bubblepoint <t.matt81+github@gmail.com>"]
 
 [dependencies]
 nickel = "0.7"
+url = "0.5"
+rustc-serialize = "0.3"
+rust-crypto = "0.2"
