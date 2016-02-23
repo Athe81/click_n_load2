@@ -18,7 +18,24 @@ use crypto::{ buffer, aes, blockmodes };
 use crypto::buffer::{WriteBuffer, ReadBuffer};
 use crypto::symmetriccipher::{ Decryptor};
 
-pub fn listen() {
+#[derive(Debug)]
+pub struct Package {
+    passwords: String,
+    source: String,
+    files: Vec<String>,
+}
+
+impl Package {
+    fn new() -> Package {
+        Package {
+            passwords: String::new(),
+            source: String::new(),
+            files: Vec::new(),
+        }
+    }
+}
+
+pub fn listen(callback: fn(Package)) {
     let mut server = Nickel::new();
 
     server.get("/flash/?", middleware! {
@@ -30,20 +47,19 @@ pub fn listen() {
     });
 
     server.post("/flash/addcrypted2/?", middleware! { |req, res|
+        let mut package = Package::new();
         let mut form_data = String::new();
         req.origin.read_to_string(&mut form_data).unwrap();
 
         let data = url::form_urlencoded::parse(form_data.as_bytes());
 
-        let mut passwords = String::new();
-        let mut source = String::new();
         let mut jk = String::new();
         let mut crypted = String::new();
 
         for (key, value) in data {
             match key.as_ref() {
-                "passwords" => passwords = value,
-                "source" => source = value,
+                "passwords" => package.passwords = value,
+                "source" => package.source = value,
                 "jk" => jk = value,
                 "crypted" => crypted = value,
                 _ => {},
@@ -71,7 +87,7 @@ pub fn listen() {
         let mut out = [0; 4096];
         let mut reader = buffer::RefReadBuffer::new(&crypted);
         let mut writer = buffer::RefWriteBuffer::new(&mut out);
-        
+
         let mut dec = aes::cbc_decryptor(
             aes::KeySize::KeySize128,
             key.deref(),
@@ -88,8 +104,10 @@ pub fn listen() {
             result.extend_from_slice(writer.take_read_buffer().take_remaining());
         };
 
-        println!("Passwords: {:?}\nSource: {:?}", passwords, source);
-        println!("{}", String::from_utf8(result).unwrap());
+        for line in  String::from_utf8(result).unwrap().lines() {
+            package.files.push(line.trim_right_matches('\u{0}').to_string());
+        }
+        callback(package);
     });
 
     server.listen("127.0.0.1:9666");
